@@ -1,0 +1,2 @@
+rootProject.name = 'PhotoBot'
+include('lib')
