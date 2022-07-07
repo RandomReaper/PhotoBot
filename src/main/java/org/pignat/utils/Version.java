@@ -2,7 +2,6 @@ package org.pignat.utils;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.pignat.photobot.Bot;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,6 +11,7 @@ import java.io.InputStreamReader;
 public class Version {
     private static final Logger log = LogManager.getLogger();
     private static String version = "ERROR:NO_VERSION";
+    private static boolean release = true;
 
     static {
         init();
@@ -22,8 +22,12 @@ public class Version {
      *
      * @return A String containing the version
      */
-    static public String string() {
+    public static String string() {
         return version;
+    }
+
+    public static boolean isRelease() {
+        return release;
     }
 
     /**
@@ -33,7 +37,7 @@ public class Version {
         final String f = "/res/generated/version.txt";
         String v = null;
         try {
-            InputStream in = Bot.class.getResourceAsStream(f);
+            InputStream in = Version.class.getResourceAsStream(f);
             if (in == null) {
                 log.error(String.format("resource '%s' not found, not using the .jar? version will be wrong", f));
                 return;
@@ -44,6 +48,8 @@ public class Version {
             }
             if (v.contains("dirty") || v.contains("-")) {
                 log.warn(String.format("WARNING: using non-release version '%s'", v));
+            } else {
+                release = true;
             }
             version = v;
         } catch (IOException e) {
