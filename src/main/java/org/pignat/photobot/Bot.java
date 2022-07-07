@@ -4,6 +4,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
+import org.pignat.utils.Version;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.ParseMode;
@@ -22,52 +23,15 @@ import java.util.stream.Collectors;
 
 public class Bot extends TelegramLongPollingBot {
     protected static final Logger log = LogManager.getLogger();
-    protected static String version = "ERROR:NO_VERSION";
     protected String token;
     protected Set<Long> ids = new HashSet<Long>();
+    protected Set<String> dirs = new HashSet<String>();
 
-    static {
-        init();
+    public Bot() {
+        setup();
     }
 
-    /**
-     * Get the version of the library
-     *
-     * @return A String containing the version
-     */
-    static public String version() {
-        return version;
-    }
-
-    /**
-     * Initialize the members
-     */
-    private static void init() {
-        final String f = "/res/generated/version.txt";
-        String v = null;
-        try {
-            InputStream in = Bot.class.getResourceAsStream(f);
-            if (in == null) {
-                System.err.println(String.format("resource '%s' not found, not using the .jar? version will be wrong", f));
-                return;
-            }
-            BufferedReader b = new BufferedReader(new InputStreamReader(in));
-            if (b.ready()) {
-                v = b.readLine();
-            }
-            if (v.contains("dirty") || v.contains("-")) {
-                System.err.println(String.format("WARNING: using non-release version '%s'", v));
-            }
-            version = v;
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (Exception e) {
-            System.err.println(String.format("Failed to parse : %s'", v));
-            e.printStackTrace();
-        }
-    }
-
-    public void setup() {
+    private void setup() {
         try (InputStream input = new FileInputStream("photobot.properties")) {
             Properties prop = new Properties();
             prop.load(input);
@@ -76,8 +40,22 @@ public class Bot extends TelegramLongPollingBot {
             if (sids != null) {
                 ids.addAll(Arrays.stream(sids.split(",")).mapToLong(Long::parseLong).boxed().collect(Collectors.toSet()));
             }
+            String sdirs = prop.getProperty("dirs");
+            if (sdirs != null) {
+                dirs.addAll(Arrays.asList(sdirs.split(",")));
+            }
             log.debug("token:" + token);
+            if (token == null || token.isBlank()) {
+                log.error("no token");
+            }
             log.info("ids:" + ids);
+            if (ids.isEmpty()) {
+                log.warn("ids is empty");
+            }
+            log.info("dirs:" + dirs);
+            if (dirs.isEmpty()) {
+                log.warn("dirs is empty");
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -145,12 +123,14 @@ public class Bot extends TelegramLongPollingBot {
         return token;
     }
 
-    public static void main(String args[]) {
-        System.out.println("Bot " + version());
-        Configurator.setRootLevel(Level.DEBUG);
+    public static String version() {
+        return Version.string();
+    }
 
+    public static void main(String args[]) {
+        Configurator.setRootLevel(Level.DEBUG);
+        log.info("Starting photobot - " + version());
         Bot b = new Bot();
-        b.setup();
     }
 }
 
