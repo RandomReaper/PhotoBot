@@ -17,13 +17,14 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.Properties;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class Bot extends TelegramLongPollingBot {
     protected static final Logger log = LogManager.getLogger();
     protected static String version = "ERROR:NO_VERSION";
     protected String token;
-    protected Long id;
+    protected Set<Long> ids = new HashSet<Long>();
 
     static {
         init();
@@ -71,9 +72,12 @@ public class Bot extends TelegramLongPollingBot {
             Properties prop = new Properties();
             prop.load(input);
             token = prop.getProperty("token");
-            id = Long.parseLong(prop.getProperty("id"));
-            log.info("token:" + token);
-            log.info("id:" + id);
+            String sids = prop.getProperty("ids");
+            if (sids != null) {
+                ids.addAll(Arrays.stream(sids.split(",")).mapToLong(Long::parseLong).boxed().collect(Collectors.toSet()));
+            }
+            log.debug("token:" + token);
+            log.info("ids:" + ids);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -85,14 +89,14 @@ public class Bot extends TelegramLongPollingBot {
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
-        sendMsg(id, "Bot is now online");
+        sendMsg("Bot is now online");
     }
 
     public void test() {
         log.info("hello");
     }
 
-    public void sendMsg(Long id, String text) {
+    public boolean sendMsg(Long id, String text) {
         log.debug(String.format("sendMsg(%s,%s)", id.toString(), text));
         SendMessage message = new SendMessage();
         message.setChatId(id.toString());
@@ -104,22 +108,30 @@ public class Bot extends TelegramLongPollingBot {
         try {
             execute(message); // Call this method to send the message
         } catch (TelegramApiException e) {
+            log.error(e);
             e.printStackTrace();
+            return false;
+        }
+        return true;
+    }
+
+    public void sendMsg(String text) {
+        for (Long id : ids) {
+            sendMsg(id, text);
         }
     }
 
     @Override
     public void onUpdateReceived(Update update) {
-        log.info("onUpdateReceived:" + update);
+        log.debug("onUpdateReceived:" + update);
         if (update.hasChannelPost()) {
             Long id = update.getChannelPost().getChatId();
             String text = update.getChannelPost().getText();
-            sendMsg(id, String.format("did you say:'<pre>%s</pre>'? " + id, text));
-        }
-        if (update.hasMessage()) {
-            Long id = update.getMessage().getChatId();
-            String text = update.getMessage().getText();
-            sendMsg(id, String.format("did you say:'<pre>%s</pre>'", text));
+            if (!ids.contains(id)) {
+                if (sendMsg(id, String.format("here is the channel id : " + id))) {
+                    ids.add(id);
+                }
+            }
         }
     }
 
