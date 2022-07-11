@@ -5,7 +5,7 @@ plugins {
 }
 
 def name = 'PhotoBot'  // <- Will change the .jar name
-def main = 'org.pignat.photobot.Bot' // <- Main class name
+def main = 'org.pignat.photobot.App' // <- Main class name
 
 java {
     toolchain {
